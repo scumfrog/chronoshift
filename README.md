@@ -32,19 +32,16 @@ Examples
 Modify a single file's timestamp:
 
 ```bash
-Copy code
 python chronoshift.py -p /path/to/file.txt -t 01/01/2022
 Modify timestamps for all .log files in a directory (and sub-directories):
 ```
 
 ```bash
-Copy code
 python chronoshift.py -p /path/to/directory -t 01/01/2021 -m *.log -r
 Restore original timestamps from backup:
 ```
 
 ```bash
-Copy code
 python chronoshift.py --restore
 ```
 
