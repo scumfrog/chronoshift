@@ -1,44 +1,70 @@
+import os
+import datetime
 import argparse
-from datetime import datetime
 from pathlib import Path
+import json
+import fnmatch
 
-def update_timestamp(file_path: Path, date_format: str) -> None:
-    """Updates the timestamp of the given file."""
-    try:
-        timestamp = datetime.strptime(date_format, "%m/%d/%Y").timestamp()
-        file_path.touch(exist_ok=True, times=(timestamp, timestamp))
-        print(f"Timestamp of {file_path} updated to {date_format}")
-    except Exception as e:
-        print(f"Error updating timestamp for {file_path}: {e}")
+def update_timestamp(filepath, timestamp):
+    if filepath.exists():
+        original_timestamp = filepath.stat().st_mtime
+        backup_data[str(filepath)] = original_timestamp
 
-def process_files(directory_path: Path, date_format: str, recursive: bool) -> None:
-    """Processes files in the directory based on the recursive flag."""
-    if recursive:
-        for file in directory_path.rglob('*'):
-            if file.is_file():
-                update_timestamp(file, date_format)
-    else:
-        for file in directory_path.iterdir():
-            if file.is_file():
-                update_timestamp(file, date_format)
+        new_timestamp_sec = datetime.datetime.strptime(timestamp, "%m/%d/%Y").timestamp()
+        os.utime(filepath, (new_timestamp_sec, new_timestamp_sec))
+
+        if not stealth_mode:
+            print(f"Timestamp of {filepath} updated to {timestamp}.")
+
+def process_files(directory, timestamp, mask="*", recursive=True):
+    for file in directory.iterdir():
+        if file.is_file() and fnmatch.fnmatch(file.name, mask):
+            update_timestamp(file, timestamp)
+        elif file.is_dir() and recursive:
+            process_files(file, timestamp, mask)
+
+backup_data = {}
+stealth_mode = False
 
 def main():
-    parser = argparse.ArgumentParser(description='Utility to adjust file and directory date marks.')
-    parser.add_argument('-p', '--path', required=True, help='Target directory or file for timestamp adjustment.')
-    parser.add_argument('-t', '--timestamp', required=True, help='Desired date in format MM/DD/YYYY for adjustment.')
-    parser.add_argument('-r', '--recursive', action='store_true', help='If set, will traverse directories recursively.')
+    parser = argparse.ArgumentParser(description="Utility to adjust file and directory date marks.")
+    parser.add_argument("-p", "--path", required=True, help="Target directory or file for timestamp adjustment.")
+    parser.add_argument("-t", "--timestamp", required=True, help="Desired date in format MM/DD/YYYY for adjustment.")
+    parser.add_argument("-r", "--recursive", action="store_true", help="If set, will traverse directories recursively.")
+    parser.add_argument("-s", "--stealth", action="store_true", help="Enable stealth mode: No output messages and no backup file.")
+    parser.add_argument("-m", "--mask", default="*", help="File pattern or mask to match (e.g., *.log).")
+    parser.add_argument("--restore", action="store_true", help="Restore file timestamps from backup.")
 
     args = parser.parse_args()
+    global stealth_mode
+    stealth_mode = args.stealth
+
     target_path = Path(args.path)
+
+    if args.restore:
+        with open("backup_timestamps.json", "r") as file:
+            backup_data = json.load(file)
+
+        for path_str, original_timestamp in backup_data.items():
+            os.utime(path_str, (original_timestamp, original_timestamp))
+
+        if not stealth_mode:
+            print("Timestamps restored from backup.")
+        return
 
     if not target_path.exists():
         print(f"Error: The provided path {target_path} does not exist.")
         return
 
     if target_path.is_dir():
-        process_files(target_path, args.timestamp, args.recursive)
+        process_files(target_path, args.timestamp, args.mask, args.recursive)
     else:
-        update_timestamp(target_path, args.timestamp)
+        if fnmatch.fnmatch(target_path.name, args.mask):
+            update_timestamp(target_path, args.timestamp)
+
+    if not stealth_mode:
+        with open("backup_timestamps.json", "w") as file:
+            json.dump(backup_data, file)
 
 if __name__ == "__main__":
     main()
