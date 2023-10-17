@@ -28,19 +28,19 @@ python chronoshift.py -p [TARGET_PATH] -t [DESIRED_DATE] [OPTIONS]
 [DESIRED_DATE]: The new date for the file/directory in MM/DD/YYYY format.
 [OPTIONS]: Additional flags such as -r for recursive, -s for stealth mode, etc.
 ```
-Examples
-Modify a single file's timestamp:
+## Examples
 
+Modify a single file's timestamp:
 ```bash
 python chronoshift.py -p /path/to/file.txt -t 01/01/2022
-Modify timestamps for all .log files in a directory (and sub-directories):
 ```
 
+Modify timestamps for all .log files in a directory (and sub-directories):
 ```bash
 python chronoshift.py -p /path/to/directory -t 01/01/2021 -m *.log -r
-Restore original timestamps from backup:
 ```
 
+Restore original timestamps from backup:
 ```bash
 python chronoshift.py --restore
 ```
